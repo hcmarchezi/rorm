@@ -39,6 +39,7 @@ Take the class below as an example.
 class User
   attr_accessor :name  
   attr_accessor :email
+  attr_accessor :birth_year
   attr_accessor :address
   attr_accessor :status
   attr_accessor :tasks
@@ -52,45 +53,24 @@ number, date time, reference to an object, etc.
 Nothing tell us, for example, that the address attribute is actually an association to an address object 
 or if it is simply a string field.
 
-Virtus Approach
-===============
-
-Virtus is a ruby gem that can be found in https://github.com/solnic/virtus.
-
-It enriches a standard ruby class with extra meta-data by providing a way to declare attributes with types. 
-See the difference from the class above with the new class User below:
-
-``` ruby
-class User
-  include Virtus
-  attribute :name, String
-  attribute :email, String
-  attribute :address, Address
-  attribute :status, Status
-  attribute :tasks, Array[Task]
-  attribute :groups, Array[Group]
-end
-```
-
-Associations are now clearly represented as attributes of a defined type. 
-
 ORM Proposal for Ruby Domain Objects (RORM)
 ===========================================
 
-No matter with the domain objects were built as plain ruby objects or with virtus. 
-The ORM design proposed here should work both ways. 
-The design makes use of Repository patterns [http://martinfowler.com/eaaCatalog/repository.html] to separate persistence from domain logic.
+The ORM design proposed here should work with plain ruby objects even if they do not contain enough metadata.
+The design makes use of Repository patterns [http://martinfowler.com/eaaCatalog/repository.html] to separate 
+persistence from domain logic.
 
 Usage Examples:
 
 * Finding Objects
 
 ``` ruby
-user = RORM::Repository.Users.where(:name => "Jones")
-user_name = Repository.Users
-.where(:email => "jones@att.com")
-.order_by(:email)
-.select(:name).first
+users = RORM::Repository.Users.where(:name => "Jones")
+
+user_name = RORM::Repository.Users
+	.where(:email => "jones@att.com")
+	.order_by(:email)
+	.select(:name).first
 ```
 
 * Save 
@@ -117,9 +97,6 @@ RORM::Repository.delete(user)
 Mapping Strategy Options
 ========================
 
-Mapping strategy can be different depending on the situation and the software engineer's objectives. 
-A good ORM could support at least two of the most used strategies listed below.
-
 * Hash-based Mapping
 
 Domain objects are mapped to the database by using a hash that describes their representation in the database. 
@@ -130,11 +107,13 @@ Example for User mapping to a relational database:
 ``` ruby
 class UserMap < RORM::Mapper
   def map	
-  {			
-    :table => "User_Table",
+  {	
+    :class => "User",
+    :table => "User",
     :fields => [
 	    { :name => "name", :column => "name", :type => String },
 	    { :name => "email", :column => "email", :type => String },	
+	    { :name => "birth_year", :column => "birth_year", :type => Integer }
     ],
     :components=> [
 	    { 
@@ -147,14 +126,55 @@ class UserMap < RORM::Mapper
         ]
 			}
     ],
-    :many-to-one-associations => [
+    :many_to_one_associations => [
 	    { :name => "status", column => "status_id", type=> Status }
     ],
-    :one-to-many-associations => [
+    :one_to_many_associations => [
 	    { :name => "tasks", :type=> Task, :reverse_column => "task_id"  }
     ],
-    :many-to-many-associations => [
-      { :name => "groups", :type=> "Group", :table=> "User_Group",      
+    :many_to_many_associations => [
+      { :name => "groups", :type=> Group, :table=> "User_Group",      
+        :origin_column=>"user_id", :target_column=>"group_id" }
+    ]
+  }
+  end
+end
+``` 
+
+To make it less verbose, the developer can omit some database configurations such as tables and columns if they 
+match their corresponding object configurations.
+
+With this idea in mind, User mapping above can be implemented as:
+
+``` ruby
+class UserMap < RORM::Mapper
+  def map	
+  {	
+    :class => "User",
+    :fields => [
+	    { :name => "name", :type => String },
+	    { :name => "email", :type => String },	
+	    { :name => "birth_year", :type => Integer }
+    ],
+    :components=> [
+	    { 
+        :name => "address", 
+        fields => [
+          { :name => "number", :column => "address_number", :type => String },
+          { :name => "street", :column => "address_street", :type => String },
+          { :name => "city", :column => "address_city", :type => String },
+          { :name => "country", :column => "address_country", :type => String }
+        ]
+			}
+    ],
+    :many_to_one_associations => [
+	    { :name => "status", type=> Status } # default is :column => "status_id"
+    ],
+    :one_to_many_associations => [
+	    { :name => "tasks", :type=> Task } # default is :reverse_column => "task_id"
+    ],
+    :many_to_many_associations => [
+      { :name => "groups", :type=> Group, :table=> "User_Group",      
         :origin_column=>"user_id", :target_column=>"group_id" }
     ]
   }
@@ -167,23 +187,3 @@ modeling freedom and also work with legacy databases.
 The mapping strategy describe above could work for both Virtus domain objects as well as plain ruby objects 
 since the missing type information is included in the hash.
 
-* Persistence Convention Mapping
-
-This strategy consists of analysing the domain objects attributes so that it can automatically (re)generate 
-the database and the object-relational mapping by using a mapping convention that can be customized. 
-Thus it does not need any kind of manual mapping from the developer.
-However it depends on the attribute type metadata to be described in domain objects to generate a database 
-and mappings, as a consequence this approach can not work in plain ruby objects but it can work with Virtus 
-domain objects and take advantage over the type information for each attribute.
-It is still important to tell the persistence infrastructure which classes are to be persisted automatically.
-
-``` ruby
-RORM::Repository.automatic_mapper(User)
-RORM::Repository.automatic_mapper(Item)
-RORM::Repository.automatic_mapper(Product)
-```
-
-* Mixed Mapping Strategies
-
-The ORM should allow both strategies above to coexist so that the developer always have two options during 
-the domain object persistence construction.
