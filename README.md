@@ -83,7 +83,7 @@ RORM::Repository.save(user)
 * Update
 
 ``` ruby
-user = User.find(23)
+user = RORM::Repository.Users.find(23)
 user.name = "James"
 RORM::Repository.save(user)
 ```
