@@ -111,30 +111,30 @@ class UserMap < RORM::Mapper
     :class => "User",
     :table => "User",
     :fields => [
-	    { :name => "name", :column => "name", :type => String },
-	    { :name => "email", :column => "email", :type => String },	
-	    { :name => "birth_year", :column => "birth_year", :type => Integer }
+	    { :name => "name", :column => "name", :type => String, :lazy => false },
+	    { :name => "email", :column => "email", :type => String, :lazy => false },	
+	    { :name => "birth_year", :column => "birth_year", :type => Integer, :lazy => true }
     ],
     :components=> [
 	    { 
         :name => "address", 
         fields => [
-          { :name => "number", :column => "address_number", :type => String },
-          { :name => "street", :column => "address_street", :type => String },
-          { :name => "city", :column => "address_city", :type => String },
-          { :name => "country", :column => "address_country", :type => String }
+          { :name => "number", :column => "address_number", :type => String, :lazy => false },
+          { :name => "street", :column => "address_street", :type => String, :lazy => false },
+          { :name => "city", :column => "address_city", :type => String, :lazy => false },
+          { :name => "country", :column => "address_country", :type => String, :lazy => false }
         ]
 			}
     ],
     :many_to_one_associations => [
-	    { :name => "status", column => "status_id", type=> Status }
+	    { :name => "status", :column => "status_id", :type=> Status, :lazy => true }
     ],
     :one_to_many_associations => [
-	    { :name => "tasks", :type=> Task, :reverse_column => "task_id"  }
+	    { :name => "tasks", :type=> Task, :reverse_column => "task_id", :lazy => true }
     ],
     :many_to_many_associations => [
       { :name => "groups", :type=> Group, :table=> "User_Group",      
-        :origin_column=>"user_id", :target_column=>"group_id" }
+        :origin_column=>"user_id", :target_column=>"group_id", :lazy => true }
     ]
   }
   end
@@ -142,7 +142,7 @@ end
 ``` 
 
 To make it less verbose, the developer can omit some database configurations such as tables and columns if they 
-match their corresponding object configurations.
+match their corresponding object configurations. Besides, fields are not lazy by default while associations are lazy.
 
 With this idea in mind, User mapping above can be implemented as:
 
@@ -152,30 +152,30 @@ class UserMap < RORM::Mapper
   {	
     :class => "User",
     :fields => [
-	    { :name => "name", :type => String },
-	    { :name => "email", :type => String },	
-	    { :name => "birth_year", :type => Integer }
+	    { :name => "name", :type => String }, # :column => "name", :lazy => false
+	    { :name => "email", :type => String }, # :column => "email", :lazy => false
+	    { :name => "birth_year", :type => Integer } # :column => "birth_year", :lazy => false
     ],
     :components=> [
 	    { 
         :name => "address", 
         fields => [
-          { :name => "number", :column => "address_number", :type => String },
-          { :name => "street", :column => "address_street", :type => String },
-          { :name => "city", :column => "address_city", :type => String },
-          { :name => "country", :column => "address_country", :type => String }
+          { :name => "number", :column => "address_number", :type => String }, # :lazy => false
+          { :name => "street", :column => "address_street", :type => String }, # :lazy => false
+          { :name => "city", :column => "address_city", :type => String }, # :lazy => false
+          { :name => "country", :column => "address_country", :type => String } # :lazy => false
         ]
 			}
     ],
     :many_to_one_associations => [
-	    { :name => "status", type=> Status } # default is :column => "status_id"
+	    { :name => "status", type=> Status } # default is :column => "status_id" :lazy => true
     ],
     :one_to_many_associations => [
-	    { :name => "tasks", :type=> Task } # default is :reverse_column => "task_id"
+	    { :name => "tasks", :type=> Task } # default is :reverse_column => "task_id" :lazy => true
     ],
     :many_to_many_associations => [
-      { :name => "groups", :type=> Group, :table=> "User_Group",      
-        :origin_column=>"user_id", :target_column=>"group_id" }
+      { :name => "groups", :type=> Group } # default is :table=> "User_Group", :origin_column=>"user_id", 
+                                           # :target_column=>"group_id", :lazy => true
     ]
   }
   end
