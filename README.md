@@ -105,39 +105,20 @@ For relational databases, it means tables and columns and for document databases
 Example for User mapping to a relational database:
 
 ``` ruby
-class UserMap < RORM::Mapper
-  def map	
-  {	
-    :class => "User",
-    :table => "User",
-    :fields => [
-	    { :name => "name", :column => "name", :type => String, :lazy => false },
-	    { :name => "email", :column => "email", :type => String, :lazy => false },	
-	    { :name => "birth_year", :column => "birth_year", :type => Integer, :lazy => true }
-    ],
-    :components=> [
-	    { 
-        :name => "address", 
-        fields => [
-          { :name => "number", :column => "address_number", :type => String, :lazy => false },
-          { :name => "street", :column => "address_street", :type => String, :lazy => false },
-          { :name => "city", :column => "address_city", :type => String, :lazy => false },
-          { :name => "country", :column => "address_country", :type => String, :lazy => false }
-        ]
-			}
-    ],
-    :many_to_one_associations => [
-	    { :name => "status", :column => "status_id", :type=> Status, :lazy => true }
-    ],
-    :one_to_many_associations => [
-	    { :name => "tasks", :type=> Task, :reverse_column => "task_id", :lazy => true }
-    ],
-    :many_to_many_associations => [
-      { :name => "groups", :type=> Group, :table=> "User_Group",      
-        :origin_column=>"user_id", :target_column=>"group_id", :lazy => true }
-    ]
-  }
+class UserMapper < RORM:Mapper
+  map_class(:User).to_table(:User)
+  map_string_prop(:name).to_column(:name)
+  map_string_prop(:email).to_column(:email)
+  map_integer_prop(:birth_year).to_column(:birth_year)
+  map_component(:address) do
+    map_integer_prop(:number).to_column(:address_number)
+	map_string_prop(:street).to_column(:address_street)
+	map_string_prop(:city).to_column(:address_city)
+	map_string_prop(:country).to_column(:address_country)
   end
+  map_many_to_one(:status).to_column(:status_id).return_type(:Status).with(:lazy, true)
+  map_one_to_many(:tasks).return_type(Task).inverse_column(:task_id).with(:lazy, true)
+  map_many_to_many(:groups).return_type(Group).table(:User_Group).origin_id(:user_id).target_id(:group_id).with(:lazy, true)	
 end
 ``` 
 
@@ -147,38 +128,16 @@ match their corresponding object configurations. Besides, fields are not lazy by
 With this idea in mind, User mapping above can be implemented as:
 
 ``` ruby
-class UserMap < RORM::Mapper
-  def map	
-  {	
-    :class => "User",
-    :fields => [
-	    { :name => "name", :type => String }, # :column => "name", :lazy => false
-	    { :name => "email", :type => String }, # :column => "email", :lazy => false
-	    { :name => "birth_year", :type => Integer } # :column => "birth_year", :lazy => false
-    ],
-    :components=> [
-	    { 
-        :name => "address", 
-        fields => [
-          { :name => "number", :column => "address_number", :type => String }, # :lazy => false
-          { :name => "street", :column => "address_street", :type => String }, # :lazy => false
-          { :name => "city", :column => "address_city", :type => String }, # :lazy => false
-          { :name => "country", :column => "address_country", :type => String } # :lazy => false
-        ]
-			}
-    ],
-    :many_to_one_associations => [
-	    { :name => "status", type=> Status } # default is :column => "status_id" :lazy => true
-    ],
-    :one_to_many_associations => [
-	    { :name => "tasks", :type=> Task } # default is :reverse_column => "task_id" :lazy => true
-    ],
-    :many_to_many_associations => [
-      { :name => "groups", :type=> Group } # default is :table=> "User_Group", :origin_column=>"user_id", 
-                                           # :target_column=>"group_id", :lazy => true
-    ]
-  }
+class UserMapper < RORM:Mapper # By convention it will assume a class User and a table User
+  map_string_props :name, :email # columns name, email in User table will be assumed
+  map_integer_props :birth_year # column birth_year in User table will be assumed
+  map_component(:address) do
+    map_integer_props(:number)  # column address_number in user table is assumed
+	map_string_props(:street, :city, :country) # columns address_street, address_city and address_country are assumed in user table
   end
+  map_many_to_one(:status) # status_id column will be assumed in user table as convention with lazy return type Status
+  map_one_to_many(:tasks)  # task_id reverse column will be assumed in task class table as convention with lazy return type as collection of Tasks
+  map_many_to_many(:groups) # collection of Group objects will be assumed with a association table User_Group with columns user_id and group_id
 end
 ``` 
 
